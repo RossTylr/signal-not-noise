@@ -41,6 +41,7 @@ Open any module directory (e.g. `01_what_is_a_dimension/`) and start with `01a_b
 The `app/` directory contains a Streamlit application that covers all seven modules with interactive controls, live plots, and a decision framework for choosing the right dimensionality reduction method.
 
 ```bash
+source venv/bin/activate  # if not already active
 streamlit run app/app.py
 ```
 
