@@ -14,45 +14,43 @@ An interactive learning repo that teaches dimensionality — what it is, why it 
 signal-not-noise/
 ├── CLAUDE.md                         ← You are here
 ├── README.md                         ← Repo overview for readers
-├── BUILDING.md                       ← Build order and checklist
-├── NOTEBOOK_TEMPLATE.md              ← Notebook structure standard
 ├── requirements.txt
 ├── .gitignore
 │
 ├── 00_orientation/README.md
 ├── 01_what_is_a_dimension/
-│   ├── README.md                     ← Reader-facing module summary
-│   ├── INSTRUCTIONS_01a.md           ← Build spec: what to implement
-│   ├── INSTRUCTIONS_01b.md
-│   ├── INSTRUCTIONS_01c.md
+│   ├── README.md
+│   ├── 01a_building_intuition.ipynb
+│   ├── 01b_curse_of_dimensionality.ipynb
+│   ├── 01c_real_world_examples.ipynb
 │   └── visuals/
 ├── 02_redundancy_and_structure/
 │   ├── README.md
-│   ├── INSTRUCTIONS_02.md            ← Covers 02a, 02b, 02c
+│   ├── 02a–02c notebooks
 │   └── visuals/
 ├── 03_linear_methods/
 │   ├── README.md
-│   ├── INSTRUCTIONS_03.md            ← Covers 03a, 03b, 03c, 03d
+│   ├── 03a–03d notebooks
 │   └── visuals/
 ├── 04_nonlinear_methods/
 │   ├── README.md
-│   ├── INSTRUCTIONS_04.md
+│   ├── 04a–04d notebooks
 │   └── visuals/
 ├── 05_feature_selection/
 │   ├── README.md
-│   ├── INSTRUCTIONS_05.md
+│   ├── 05a–05c notebooks
 │   └── visuals/
 ├── 06_learned_compression/
 │   ├── README.md
-│   ├── INSTRUCTIONS_06.md
+│   ├── 06a–06c notebooks
 │   └── visuals/
 ├── 07_applied_thinking/
 │   ├── README.md
-│   ├── INSTRUCTIONS_07.md
+│   ├── 07a–07c notebooks
 │   └── visuals/
 │
 ├── app/
-│   ├── app.py                        ← Streamlit keystone (complete)
+│   ├── app.py                        ← Streamlit interactive explorer
 │   └── README.md
 ├── utils/
 │   ├── __init__.py
@@ -66,19 +64,6 @@ signal-not-noise/
     ├── synthetic/
     └── real/
 ```
-
-## What's Done vs What Needs Building
-
-**Done:** All scaffolding, READMEs, INSTRUCTIONS specs, utils, cheatsheets, Streamlit app.
-
-**To build:** 19 Jupyter notebooks (.ipynb files). Each has a detailed INSTRUCTIONS_*.md spec.
-
-## How to Build a Notebook
-
-1. Read `NOTEBOOK_TEMPLATE.md` — this is the structure standard
-2. Read the relevant `INSTRUCTIONS_*.md` — this is the exact spec (sections, code, visuals, insights)
-3. Create the .ipynb in the module directory following the naming convention: `{module}{sub}_{short_title}.ipynb`
-4. Follow the build order in `BUILDING.md`
 
 ## Notebook Structure (every notebook, no exceptions)
 
@@ -96,7 +81,7 @@ signal-not-noise/
 - `import numpy as np` — always
 - `from utils.plotting import apply_style, COLOURS` — top of every notebook
 - `apply_style()` — call before any plotting
-- Random seeds: `np.random.RandomState(42)` or `seed=42`
+- Random seeds: `rng = np.random.default_rng(42)` — never use legacy `np.random.RandomState` or global `np.random.seed`
 - Use `utils.data_generators` functions, don't reinvent synthetic data
 - Colour scheme: `COLOURS["signal"]` (blue), `COLOURS["noise"]` (red), `COLOURS["accent"]` (amber), `COLOURS["success"]` (green)
 - Figure sizes: (10, 5) single, (12, 5) side-by-side, (12, 8) grids
@@ -141,8 +126,8 @@ pandas>=2.0, torch>=2.0, pillow>=10.0
 python -m venv venv && source venv/bin/activate && pip install -r requirements.txt
 
 # Run Streamlit app
-cd app && streamlit run app.py
+streamlit run app/app.py
 
-# Run a notebook
-jupyter notebook 01_what_is_a_dimension/01a_building_intuition.ipynb
+# Run notebooks
+jupyter notebook
 ```
