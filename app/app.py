@@ -701,160 +701,169 @@ elif section == "06 · Learned Compression":
         "force data through a **bottleneck** and train the network to reconstruct it."
     )
 
-    import torch
-    import torch.nn as nn
+    try:
+        import torch
+        import torch.nn as nn
+    except ImportError:
+        torch = None
 
-    digits = load_digits()
-    X_digits = digits.data / 16.0  # Normalise to [0, 1]
-
-    class _Autoencoder(nn.Module):
-        def __init__(self, input_dim, latent_dim):
-            super().__init__()
-            self.encoder = nn.Sequential(
-                nn.Linear(input_dim, 128), nn.ReLU(),
-                nn.Linear(128, latent_dim),
-            )
-            self.decoder = nn.Sequential(
-                nn.Linear(latent_dim, 128), nn.ReLU(),
-                nn.Linear(128, input_dim), nn.Sigmoid(),
-            )
-
-        def forward(self, x):
-            z = self.encoder(x)
-            return self.decoder(z), z
-
-    @st.cache_resource
-    def _train_ae(latent_dim, epochs=300, lr=1e-3):
-        data = load_digits().data / 16.0
-        model = _Autoencoder(64, latent_dim)
-        optimiser = torch.optim.Adam(model.parameters(), lr=lr)
-        X_t = torch.tensor(data, dtype=torch.float32)
-        for _ in range(epochs):
-            recon, _ = model(X_t)
-            loss = nn.functional.mse_loss(recon, X_t)
-            optimiser.zero_grad()
-            loss.backward()
-            optimiser.step()
-        model.eval()
-        return model
-
-    tab1, tab2 = st.tabs(["🔬 Bottleneck Reconstruction", "📊 PCA vs Autoencoder"])
-
-    with tab1:
-        st.subheader("Force Data Through a Bottleneck")
-        st.markdown(
-            "64 pixel values → **k** hidden units → 64 pixel values. "
-            "The network must learn what to keep and what to discard."
+    if torch is None:
+        st.error(
+            "**PyTorch is required for this module.** "
+            "Install it with: `pip install torch`"
         )
+    else:
+        digits = load_digits()
+        X_digits = digits.data / 16.0  # Normalise to [0, 1]
 
-        latent_dim = st.select_slider(
-            "Bottleneck size (latent dimensions)",
-            options=[2, 5, 10, 20, 32],
-            value=10,
-            key="ae_latent",
-        )
+        class _Autoencoder(nn.Module):
+            def __init__(self, input_dim, latent_dim):
+                super().__init__()
+                self.encoder = nn.Sequential(
+                    nn.Linear(input_dim, 128), nn.ReLU(),
+                    nn.Linear(128, latent_dim),
+                )
+                self.decoder = nn.Sequential(
+                    nn.Linear(latent_dim, 128), nn.ReLU(),
+                    nn.Linear(128, input_dim), nn.Sigmoid(),
+                )
 
-        with st.spinner(f"Training autoencoder (k={latent_dim})..."):
-            model = _train_ae(latent_dim)
+            def forward(self, x):
+                z = self.encoder(x)
+                return self.decoder(z), z
 
-        X_t = torch.tensor(X_digits, dtype=torch.float32)
-        with torch.no_grad():
-            recon, latent = model(X_t)
-        recon_np = recon.numpy()
-        latent_np = latent.numpy()
+        @st.cache_resource
+        def _train_ae(latent_dim, epochs=300, lr=1e-3):
+            data = load_digits().data / 16.0
+            model = _Autoencoder(64, latent_dim)
+            optimiser = torch.optim.Adam(model.parameters(), lr=lr)
+            X_t = torch.tensor(data, dtype=torch.float32)
+            for _ in range(epochs):
+                recon, _ = model(X_t)
+                loss = nn.functional.mse_loss(recon, X_t)
+                optimiser.zero_grad()
+                loss.backward()
+                optimiser.step()
+            model.eval()
+            return model
 
-        # Show 10 originals vs reconstructions
-        fig, axes = plt.subplots(2, 10, figsize=(12, 3))
-        indices = np.linspace(0, len(X_digits) - 1, 10, dtype=int)
-        for i, idx in enumerate(indices):
-            axes[0, i].imshow(X_digits[idx].reshape(8, 8),
-                              cmap="gray_r", vmin=0, vmax=1)
-            axes[0, i].set_xticks([])
-            axes[0, i].set_yticks([])
-            axes[1, i].imshow(recon_np[idx].reshape(8, 8),
-                              cmap="gray_r", vmin=0, vmax=1)
-            axes[1, i].set_xticks([])
-            axes[1, i].set_yticks([])
-        axes[0, 0].set_ylabel("Original", fontsize=10)
-        axes[1, 0].set_ylabel("Reconstructed", fontsize=10)
-        fig.suptitle(
-            f"Autoencoder Reconstruction (bottleneck = {latent_dim})",
-            fontweight="bold",
-        )
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
+        tab1, tab2 = st.tabs(["Bottleneck Reconstruction", "PCA vs Autoencoder"])
 
-        mse = float(np.mean((X_digits - recon_np) ** 2))
-        st.metric("Reconstruction Error (MSE)", f"{mse:.4f}")
-
-        # Latent space visualisation (first 2 dims)
-        if latent_dim >= 2:
-            st.subheader("Latent Space (first 2 dimensions)")
-            fig, ax = plt.subplots(figsize=(7, 6))
-            scatter = ax.scatter(
-                latent_np[:, 0], latent_np[:, 1],
-                c=digits.target, cmap="tab10", s=10, alpha=0.6,
+        with tab1:
+            st.subheader("Force Data Through a Bottleneck")
+            st.markdown(
+                "64 pixel values to **k** hidden units to 64 pixel values. "
+                "The network must learn what to keep and what to discard."
             )
-            ax.set_xlabel("Latent 1")
-            ax.set_ylabel("Latent 2")
-            ax.set_title(f"Digits in {latent_dim}D Latent Space")
-            plt.colorbar(scatter, ax=ax, label="Digit")
+
+            latent_dim = st.select_slider(
+                "Bottleneck size (latent dimensions)",
+                options=[2, 5, 10, 20, 32],
+                value=10,
+                key="ae_latent",
+            )
+
+            with st.spinner(f"Training autoencoder (k={latent_dim})..."):
+                model = _train_ae(latent_dim)
+
+            X_t = torch.tensor(X_digits, dtype=torch.float32)
+            with torch.no_grad():
+                recon, latent = model(X_t)
+            recon_np = recon.numpy()
+            latent_np = latent.numpy()
+
+            # Show 10 originals vs reconstructions
+            fig, axes = plt.subplots(2, 10, figsize=(12, 3))
+            indices = np.linspace(0, len(X_digits) - 1, 10, dtype=int)
+            for i, idx in enumerate(indices):
+                axes[0, i].imshow(X_digits[idx].reshape(8, 8),
+                                  cmap="gray_r", vmin=0, vmax=1)
+                axes[0, i].set_xticks([])
+                axes[0, i].set_yticks([])
+                axes[1, i].imshow(recon_np[idx].reshape(8, 8),
+                                  cmap="gray_r", vmin=0, vmax=1)
+                axes[1, i].set_xticks([])
+                axes[1, i].set_yticks([])
+            axes[0, 0].set_ylabel("Original", fontsize=10)
+            axes[1, 0].set_ylabel("Reconstructed", fontsize=10)
+            fig.suptitle(
+                f"Autoencoder Reconstruction (bottleneck = {latent_dim})",
+                fontweight="bold",
+            )
+            plt.tight_layout()
             st.pyplot(fig)
             plt.close()
 
-        st.info(
-            "💡 **Smaller bottleneck = more compression.** At k=2, the network "
-            "must distill 64 pixel values into just 2 numbers — yet digits "
-            "remain recognisable. That's learned compression."
-        )
+            mse = float(np.mean((X_digits - recon_np) ** 2))
+            st.metric("Reconstruction Error (MSE)", f"{mse:.4f}")
 
-    with tab2:
-        st.subheader("PCA vs Autoencoder: Reconstruction Error")
-        st.markdown(
-            "Both compress 64D → k dimensions. PCA is linear; the autoencoder "
-            "can learn nonlinear mappings. When does the extra capacity help?"
-        )
+            # Latent space visualisation (first 2 dims)
+            if latent_dim >= 2:
+                st.subheader("Latent Space (first 2 dimensions)")
+                fig, ax = plt.subplots(figsize=(7, 6))
+                scatter = ax.scatter(
+                    latent_np[:, 0], latent_np[:, 1],
+                    c=digits.target, cmap="tab10", s=10, alpha=0.6,
+                )
+                ax.set_xlabel("Latent 1")
+                ax.set_ylabel("Latent 2")
+                ax.set_title(f"Digits in {latent_dim}D Latent Space")
+                plt.colorbar(scatter, ax=ax, label="Digit")
+                st.pyplot(fig)
+                plt.close()
 
-        dims_to_test = [2, 5, 10, 20, 32]
-        pca_errors = []
-        ae_errors = []
+            st.info(
+                "**Smaller bottleneck = more compression.** At k=2, the network "
+                "must distill 64 pixel values into just 2 numbers, yet digits "
+                "remain recognisable. That is learned compression."
+            )
 
-        progress = st.progress(0)
-        for i, k in enumerate(dims_to_test):
-            # PCA reconstruction
-            pca = PCA(n_components=k).fit(X_digits)
-            X_pca_recon = pca.inverse_transform(pca.transform(X_digits))
-            pca_errors.append(float(np.mean((X_digits - X_pca_recon) ** 2)))
+        with tab2:
+            st.subheader("PCA vs Autoencoder: Reconstruction Error")
+            st.markdown(
+                "Both compress 64D to k dimensions. PCA is linear; the autoencoder "
+                "can learn nonlinear mappings. When does the extra capacity help?"
+            )
 
-            # Autoencoder reconstruction
-            ae_model = _train_ae(k)
-            X_t = torch.tensor(X_digits, dtype=torch.float32)
-            with torch.no_grad():
-                ae_recon, _ = ae_model(X_t)
-            ae_errors.append(float(np.mean((X_digits - ae_recon.numpy()) ** 2)))
-            progress.progress((i + 1) / len(dims_to_test))
+            dims_to_test = [2, 5, 10, 20, 32]
+            pca_errors = []
+            ae_errors = []
 
-        progress.empty()
+            progress = st.progress(0)
+            for i, k in enumerate(dims_to_test):
+                # PCA reconstruction
+                pca = PCA(n_components=k).fit(X_digits)
+                X_pca_recon = pca.inverse_transform(pca.transform(X_digits))
+                pca_errors.append(float(np.mean((X_digits - X_pca_recon) ** 2)))
 
-        fig, ax = plt.subplots(figsize=(10, 5))
-        ax.plot(dims_to_test, pca_errors, "o-", color=SIGNAL, linewidth=2,
-                markersize=8, label="PCA (linear)")
-        ax.plot(dims_to_test, ae_errors, "s-", color=NOISE, linewidth=2,
-                markersize=8, label="Autoencoder (nonlinear)")
-        ax.set_xlabel("Latent Dimensions (k)")
-        ax.set_ylabel("Reconstruction Error (MSE)")
-        ax.set_title("Linear vs Nonlinear Compression on Digits")
-        ax.legend()
-        st.pyplot(fig)
-        plt.close()
+                # Autoencoder reconstruction
+                ae_model = _train_ae(k)
+                X_t = torch.tensor(X_digits, dtype=torch.float32)
+                with torch.no_grad():
+                    ae_recon, _ = ae_model(X_t)
+                ae_errors.append(float(np.mean((X_digits - ae_recon.numpy()) ** 2)))
+                progress.progress((i + 1) / len(dims_to_test))
 
-        st.info(
-            "💡 **At small k**, the autoencoder's nonlinear capacity lets it "
-            "capture curved structure that PCA misses. **As k grows**, PCA "
-            "catches up — there's less nonlinearity left to exploit. "
-            "The meta-lesson: try PCA first, escalate only if needed."
-        )
+            progress.empty()
+
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.plot(dims_to_test, pca_errors, "o-", color=SIGNAL, linewidth=2,
+                    markersize=8, label="PCA (linear)")
+            ax.plot(dims_to_test, ae_errors, "s-", color=NOISE, linewidth=2,
+                    markersize=8, label="Autoencoder (nonlinear)")
+            ax.set_xlabel("Latent Dimensions (k)")
+            ax.set_ylabel("Reconstruction Error (MSE)")
+            ax.set_title("Linear vs Nonlinear Compression on Digits")
+            ax.legend()
+            st.pyplot(fig)
+            plt.close()
+
+            st.info(
+                "**At small k**, the autoencoder's nonlinear capacity lets it "
+                "capture curved structure that PCA misses. **As k grows**, PCA "
+                "catches up as there is less nonlinearity left to exploit. "
+                "The meta-lesson: try PCA first, escalate only if needed."
+            )
 
 
 # ── 07: Decision Framework ──────────────────────────────────────────────────
